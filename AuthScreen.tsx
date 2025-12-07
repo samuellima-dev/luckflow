@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { LayoutGrid, ArrowRight, Loader2 } from 'lucide-react';
-import { User } from '../types';
-import { supabase } from '../supabaseClient';
+import { User } from './types';
+import { supabase } from './supabaseClient';
 
 interface AuthScreenProps {
   onLogin: (user: User) => void;
@@ -50,14 +51,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
         if (insertError) throw insertError;
 
-        onLogin({ id: username, username }); // Using username as ID for simplicity in this flow
+        onLogin({ id: username, username, role: 'viewer' }); // Default role added to satisfy types
       } else {
         if (!existingUser) {
           setError('Usuário não encontrado. Crie uma conta.');
           setLoading(false);
           return;
         }
-        onLogin({ id: existingUser.username, username: existingUser.username });
+        onLogin({ id: existingUser.username, username: existingUser.username, role: existingUser.role || 'viewer' });
       }
 
     } catch (err: any) {
