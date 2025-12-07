@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LuckFlow - Gestão de Projetos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              nexus: {
+                bg: 'var(--bg)',
+                card: 'var(--card)',
+                border: 'var(--border)',
+                accent: '#EAB308', // Mustard/Amber-500
+                cobalt: '#2563EB', // Blue-600
+                text: 'var(--text)',
+                muted: 'var(--muted)',
+                hover: 'var(--hover)',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --bg: #F3F4F6;
+        --card: #FFFFFF;
+        --border: #E5E7EB;
+        --text: #111827;
+        --muted: #6B7280;
+        --hover: #F9FAFB;
+      }
+      .dark {
+        --bg: #0a0a0a;
+        --card: #171717;
+        --border: #262626;
+        --text: #E5E5E5;
+        --muted: #737373;
+        --hover: #262626;
+      }
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+        transition: background-color 0.3s, color 0.3s;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
