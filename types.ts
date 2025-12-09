@@ -3,6 +3,7 @@ export interface User {
   id: string;
   username: string;
   role: 'admin' | 'editor' | 'viewer';
+  plan?: 'free' | 'silver' | 'bronze' | 'gold'; // New field for subscription plan
   avatarUrl?: string;
   whatsapp?: string; // New field for notifications
   email?: string; // New field for account recovery

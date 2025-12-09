@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Folder, Plus, Activity, Sun, Moon, LogOut, Share2, GripVertical, User as UserIcon, Users, Settings } from 'lucide-react';
+import { Sparkles, Folder, Plus, Activity, Sun, Moon, LogOut, Share2, GripVertical, User as UserIcon, Users, Settings, Crown } from 'lucide-react';
 import { Project, User, ViewMode } from '../types';
 import { ROLES_CONFIG } from '../constants';
 
@@ -18,6 +18,7 @@ interface SidebarProps {
   currentView: ViewMode;
   setView: (view: ViewMode) => void;
   onOpenProfile: () => void;
+  onOpenSubscription: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -33,7 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   toggleTheme,
   currentView,
   setView,
-  onOpenProfile
+  onOpenProfile,
+  onOpenSubscription
 }) => {
   const [draggedProject, setDraggedProject] = useState<Project | null>(null);
 
@@ -123,10 +125,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 py-6 px-3 space-y-4 overflow-y-auto">
+      <div className="flex-1 py-6 px-3 space-y-4 overflow-y-auto custom-scrollbar">
         
         <div className="space-y-2">
-            {/* New Project Button - Only for Admin/Editors ideally, but let's keep unrestricted for structure, controlled by logic */}
+            {/* New Project Button */}
             <button 
                 onClick={onNewProject} 
                 className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-nexus-border rounded hover:border-nexus-cobalt hover:text-nexus-cobalt text-nexus-muted text-xs font-bold uppercase transition-colors"
@@ -144,6 +146,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
             )}
         </div>
+
+        {/* Upgrade Plan Button */}
+        <button 
+            onClick={onOpenSubscription}
+            className="w-full relative overflow-hidden group rounded-lg p-0.5 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500"
+        >
+            <div className="relative bg-nexus-bg hover:bg-nexus-card text-nexus-text rounded-md px-3 py-2 flex items-center justify-center gap-2 transition-colors">
+                <Crown size={14} className="text-yellow-500" />
+                <span className="text-xs font-bold uppercase tracking-wider">Assinar Premium</span>
+            </div>
+        </button>
 
         {/* My Projects Section */}
         <div>
@@ -210,6 +223,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
              ) : (
                  <>
                     {String(user.username || '').substring(0, 2)}
+                    {user.plan && user.plan !== 'free' && (
+                         <div className="absolute top-0 right-0 p-0.5 bg-yellow-500 rounded-bl-md">
+                             <Crown size={6} className="text-white fill-current" />
+                         </div>
+                    )}
                     <div className="absolute -bottom-1 -right-1 bg-nexus-card rounded-full p-0.5 border border-nexus-border">
                         <Settings size={8} className="text-nexus-muted" />
                     </div>
@@ -218,8 +236,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs font-medium text-nexus-text truncate">{String(user.username)}</span>
-            <span className="text-[9px] text-nexus-muted font-mono flex items-center gap-1">
-                {ROLES_CONFIG[user.role].label}
+            <span className="text-[9px] text-nexus-muted font-mono flex items-center gap-1 truncate">
+                {ROLES_CONFIG[user.role].label} 
+                {user.plan && user.plan !== 'free' && ` • ${user.plan.toUpperCase()}`}
             </span>
           </div>
           <button onClick={(e) => { e.stopPropagation(); onLogout(); }} className="text-nexus-muted hover:text-red-500 transition-colors" title="Sair">

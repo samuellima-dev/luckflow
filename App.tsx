@@ -8,6 +8,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { ProjectModal } from './components/ProjectModal';
 import { MonitoringDashboard } from './components/MonitoringDashboard';
 import { ProfileModal } from './components/ProfileModal';
+import { SubscriptionModal } from './components/SubscriptionModal';
 import { ListView, TableView } from './components/ProjectViews';
 import { Task, Status, User, Project, Tag, ViewMode } from './types';
 import { STATUS_COLUMNS, PRESET_TAGS } from './constants';
@@ -46,6 +47,8 @@ const App: React.FC = () => {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+
   const [projectModalMode, setProjectModalMode] = useState<'create' | 'share'>('create');
   const [projectToShare, setProjectToShare] = useState<Project | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -72,6 +75,7 @@ const App: React.FC = () => {
        // Retrieve user-specific data from LocalStorage for speed, but Supabase sync happens in AuthScreen on login usually.
        // Here we just restore session.
        const savedRole = localStorage.getItem(`luck_role_${activeUsername}`);
+       const savedPlan = localStorage.getItem(`luck_plan_${activeUsername}`);
        const savedAvatar = localStorage.getItem(`luck_avatar_${activeUsername}`);
        const savedWhatsapp = localStorage.getItem(`luck_whatsapp_${activeUsername}`);
        const savedEmail = localStorage.getItem(`luck_email_${activeUsername}`);
@@ -80,6 +84,7 @@ const App: React.FC = () => {
            id: activeUsername, 
            username: activeUsername,
            role: (savedRole as any) || 'admin',
+           plan: (savedPlan as any) || 'free',
            avatarUrl: savedAvatar || undefined,
            whatsapp: savedWhatsapp || undefined,
            email: savedEmail || undefined
@@ -137,9 +142,10 @@ const App: React.FC = () => {
             .single();
             
           if (!profileError && profileData) {
-              const syncedUser = {
+              const syncedUser: User = {
                   ...user,
                   role: profileData.role || user.role,
+                  plan: profileData.plan || user.plan || 'free', // Sync Plan
                   email: profileData.email || user.email,
                   whatsapp: profileData.whatsapp || user.whatsapp,
                   avatarUrl: profileData.avatar_url || user.avatarUrl,
@@ -149,6 +155,7 @@ const App: React.FC = () => {
               // We check specific fields to be safe
               if (
                   syncedUser.role !== user.role || 
+                  syncedUser.plan !== user.plan ||
                   syncedUser.email !== user.email || 
                   syncedUser.password !== user.password ||
                   syncedUser.avatarUrl !== user.avatarUrl
@@ -158,6 +165,7 @@ const App: React.FC = () => {
                   if (syncedUser.email) localStorage.setItem(`luck_email_${user.username}`, syncedUser.email);
                   if (syncedUser.whatsapp) localStorage.setItem(`luck_whatsapp_${user.username}`, syncedUser.whatsapp);
                   if (syncedUser.role) localStorage.setItem(`luck_role_${user.username}`, syncedUser.role);
+                  if (syncedUser.plan) localStorage.setItem(`luck_plan_${user.username}`, syncedUser.plan);
                   if (syncedUser.avatarUrl) localStorage.setItem(`luck_avatar_${user.username}`, syncedUser.avatarUrl);
               }
           }
@@ -182,6 +190,7 @@ const App: React.FC = () => {
           if (projectsError) throw projectsError;
 
           if (allProjects) {
+            // Robust check for string array containment
             const myProjects = allProjects.filter((p: any) => 
                 p.owner_id === user.id || 
                 (Array.isArray(p.shared_with) && p.shared_with.includes(user.username))
@@ -255,6 +264,7 @@ const App: React.FC = () => {
   const handleLogin = (loggedInUser: User) => {
     // Check for saved data specific to this user
     const savedRole = localStorage.getItem(`luck_role_${loggedInUser.username}`);
+    const savedPlan = localStorage.getItem(`luck_plan_${loggedInUser.username}`);
     const savedAvatar = localStorage.getItem(`luck_avatar_${loggedInUser.username}`);
     const savedWhatsapp = localStorage.getItem(`luck_whatsapp_${loggedInUser.username}`);
     const savedEmail = localStorage.getItem(`luck_email_${loggedInUser.username}`);
@@ -262,6 +272,7 @@ const App: React.FC = () => {
     const userWithRole = { 
         ...loggedInUser, 
         role: (savedRole as any) || loggedInUser.role || 'admin',
+        plan: (savedPlan as any) || loggedInUser.plan || 'free',
         avatarUrl: savedAvatar || loggedInUser.avatarUrl,
         whatsapp: savedWhatsapp || loggedInUser.whatsapp,
         email: savedEmail || loggedInUser.email,
@@ -271,19 +282,12 @@ const App: React.FC = () => {
     setUser(userWithRole);
     localStorage.setItem('luck_active_user', userWithRole.username);
     
-    // Ensure we save the role if it was passed during registration/login to keep it consistent
-    if (userWithRole.role) {
-        localStorage.setItem(`luck_role_${userWithRole.username}`, userWithRole.role);
-    }
-    if (userWithRole.whatsapp) {
-        localStorage.setItem(`luck_whatsapp_${userWithRole.username}`, userWithRole.whatsapp);
-    }
-    if (userWithRole.avatarUrl) {
-        localStorage.setItem(`luck_avatar_${userWithRole.username}`, userWithRole.avatarUrl);
-    }
-    if (userWithRole.email) {
-        localStorage.setItem(`luck_email_${userWithRole.username}`, userWithRole.email);
-    }
+    // Ensure we save the role/plan if it was passed during registration/login to keep it consistent
+    if (userWithRole.role) localStorage.setItem(`luck_role_${userWithRole.username}`, userWithRole.role);
+    if (userWithRole.plan) localStorage.setItem(`luck_plan_${userWithRole.username}`, userWithRole.plan);
+    if (userWithRole.whatsapp) localStorage.setItem(`luck_whatsapp_${userWithRole.username}`, userWithRole.whatsapp);
+    if (userWithRole.avatarUrl) localStorage.setItem(`luck_avatar_${userWithRole.username}`, userWithRole.avatarUrl);
+    if (userWithRole.email) localStorage.setItem(`luck_email_${userWithRole.username}`, userWithRole.email);
   };
 
   const handleLogout = () => {
@@ -304,18 +308,11 @@ const App: React.FC = () => {
       setUser(updatedUser);
       
       // 2. Persist to local storage with user-specific keys
-      if (updates.role) {
-          localStorage.setItem(`luck_role_${user.username}`, updates.role);
-      }
-      if (updates.avatarUrl !== undefined) {
-          localStorage.setItem(`luck_avatar_${user.username}`, updates.avatarUrl);
-      }
-      if (updates.whatsapp !== undefined) {
-          localStorage.setItem(`luck_whatsapp_${user.username}`, updates.whatsapp);
-      }
-      if (updates.email !== undefined) {
-          localStorage.setItem(`luck_email_${user.username}`, updates.email);
-      }
+      if (updates.role) localStorage.setItem(`luck_role_${user.username}`, updates.role);
+      if (updates.plan) localStorage.setItem(`luck_plan_${user.username}`, updates.plan);
+      if (updates.avatarUrl !== undefined) localStorage.setItem(`luck_avatar_${user.username}`, updates.avatarUrl);
+      if (updates.whatsapp !== undefined) localStorage.setItem(`luck_whatsapp_${user.username}`, updates.whatsapp);
+      if (updates.email !== undefined) localStorage.setItem(`luck_email_${user.username}`, updates.email);
       
       // 3. Persist to Supabase
       if (!isOfflineMode) {
@@ -324,6 +321,7 @@ const App: React.FC = () => {
           // Clearly map fields
           if (updates.password) dbUpdates.password = updates.password;
           if (updates.role) dbUpdates.role = updates.role;
+          if (updates.plan) dbUpdates.plan = updates.plan;
           if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
           if (updates.whatsapp !== undefined) dbUpdates.whatsapp = updates.whatsapp;
           if (updates.email !== undefined) dbUpdates.email = updates.email;
@@ -344,30 +342,34 @@ const App: React.FC = () => {
 
                 if (isSchemaError) {
                     console.warn("Schema mismatch. Missing columns in DB.");
-                    
-                    // Attempt fallback save for fields we know usually exist (avatar only usually if role is missing)
+                    // Attempt fallback save for fields we know usually exist
                     try {
                         const safeUpdates: any = {};
                         if (dbUpdates.avatar_url) safeUpdates.avatar_url = dbUpdates.avatar_url;
-
                         if (Object.keys(safeUpdates).length > 0) {
                              await supabase.from('profiles').update(safeUpdates).eq('username', user.username);
                         }
-                        
-                        showToast("Salvo localmente! (DB: Coluna 'role' ou 'email' ausente. Rode o SQL!)", "success");
-                        console.log("SQL NECESSÁRIO: ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role text; ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email text;");
+                        showToast("Salvo localmente! (DB: Colunas ausentes)", "success");
+                        console.log("SQL NECESSÁRIO: ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role text; ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email text; ALTER TABLE profiles ADD COLUMN IF NOT EXISTS plan text;");
                         return;
-                    } catch (retryErr) {
-                        console.error("Safe update also failed", retryErr);
-                    }
+                    } catch (retryErr) { console.error(retryErr); }
                 }
-                
                 showToast(`Erro ao salvar no banco: ${errorMessage}`, "error");
             }
           }
       } else {
           showToast(`Perfil salvo (Modo Offline)!`);
       }
+  };
+
+  const handleUpgradePlan = async (plan: 'silver' | 'bronze' | 'gold') => {
+      // Simulate Payment Process
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Update User
+      handleUpdateProfile({ plan });
+      showToast(`Plano ${plan.toUpperCase()} ativado com sucesso!`, 'success');
+      setIsSubscriptionModalOpen(false);
   };
 
   const handleManageTags = async (action: 'add' | 'edit' | 'delete', tag: Tag, oldText?: string) => {
@@ -433,14 +435,22 @@ const App: React.FC = () => {
     if (error) console.error(error);
   };
 
-  const handleShareProject = async (username: string, taskId?: string) => {
+  const handleShareProject = async (usernameInput: string, taskId?: string) => {
     if (!projectToShare) return;
     if (user?.role === 'viewer') {
         showToast("Permissão negada para compartilhar", "error");
         return;
     }
     
-    let updatedSharedWith = projectToShare.sharedWith;
+    // IMPORTANT: Trim whitespace to prevent matching errors
+    const username = usernameInput.trim();
+
+    if (!username) {
+        showToast("Digite um nome de usuário válido", "error");
+        return;
+    }
+    
+    let updatedSharedWith = projectToShare.sharedWith || [];
     if (!updatedSharedWith.includes(username)) {
         updatedSharedWith = [...updatedSharedWith, username];
         const updatedProject = { ...projectToShare, sharedWith: updatedSharedWith };
@@ -449,7 +459,7 @@ const App: React.FC = () => {
     if (taskId) {
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignee: username } : t));
     }
-    showToast("Projeto compartilhado (Local)", "success");
+    showToast(`Projeto compartilhado com ${username}`, "success");
 
     if (isOfflineMode) return;
 
@@ -896,6 +906,7 @@ const App: React.FC = () => {
         currentView={currentView}
         setView={setCurrentView}
         onOpenProfile={() => setIsProfileModalOpen(true)}
+        onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0 relative">
@@ -1081,6 +1092,13 @@ const App: React.FC = () => {
         onClose={() => setIsProfileModalOpen(false)}
         user={user}
         onUpdateProfile={handleUpdateProfile}
+      />
+
+      <SubscriptionModal
+        isOpen={isSubscriptionModalOpen}
+        onClose={() => setIsSubscriptionModalOpen(false)}
+        currentUser={user}
+        onUpgrade={handleUpgradePlan}
       />
 
       {toast?.visible && (
