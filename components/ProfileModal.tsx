@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { Shield, Check, X, UserCog, Camera, Lock, Save, AlertCircle, Upload, Link as LinkIcon, Image as ImageIcon, Phone, Mail } from 'lucide-react';
+import { Shield, Check, X, UserCog, Camera, Lock, Save, AlertCircle, Upload, Link as LinkIcon, Image as ImageIcon, Phone, Mail, CreditCard, Crown, Star, Zap } from 'lucide-react';
 import { ROLES_CONFIG } from '../constants';
 
 interface ProfileModalProps {
@@ -8,10 +9,11 @@ interface ProfileModalProps {
   onClose: () => void;
   user: User;
   onUpdateProfile: (updates: Partial<User> & { password?: string }) => void;
+  onOpenSubscription: () => void;
 }
 
-export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onUpdateProfile }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'security'>('general');
+export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, user, onUpdateProfile, onOpenSubscription }) => {
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'subscription'>('general');
   
   // Form States
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -113,6 +115,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
       setTimeout(() => setSuccess(''), 3000);
   };
 
+  const getPlanDetails = () => {
+      switch(user.plan) {
+          case 'gold': return { name: 'Ouro', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/30' };
+          case 'bronze': return { name: 'Bronze', icon: Zap, color: 'text-amber-700', bg: 'bg-amber-700/10 border-amber-700/30' };
+          case 'silver': return { name: 'Prata', icon: Shield, color: 'text-gray-400', bg: 'bg-gray-400/10 border-gray-400/30' };
+          default: return { name: 'Gratuito', icon: Star, color: 'text-nexus-muted', bg: 'bg-nexus-bg border-nexus-border' };
+      }
+  };
+
+  const planDetails = getPlanDetails();
+
   if (!isOpen) return null;
 
   return (
@@ -147,7 +160,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
                 onClick={() => setActiveTab('general')}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'general' ? 'text-nexus-cobalt border-b-2 border-nexus-cobalt bg-nexus-cobalt/5' : 'text-nexus-muted hover:text-nexus-text'}`}
             >
-                Geral & Permissões
+                Geral
+            </button>
+            <button 
+                onClick={() => setActiveTab('subscription')}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'subscription' ? 'text-nexus-cobalt border-b-2 border-nexus-cobalt bg-nexus-cobalt/5' : 'text-nexus-muted hover:text-nexus-text'}`}
+            >
+                Assinatura
             </button>
             <button 
                 onClick={() => setActiveTab('security')}
@@ -301,6 +320,40 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
                             className="flex items-center gap-2 px-4 py-2 bg-nexus-cobalt hover:bg-blue-600 text-white text-xs font-bold rounded transition-colors"
                         >
                             <Save size={14} /> Salvar Alterações
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'subscription' && (
+                <div className="space-y-6">
+                    <div className={`p-6 rounded-lg border flex flex-col items-center justify-center text-center gap-4 ${planDetails.bg}`}>
+                         <div className={`p-4 rounded-full bg-nexus-bg border border-nexus-border shadow-lg ${planDetails.color}`}>
+                             <planDetails.icon size={48} />
+                         </div>
+                         <div>
+                             <h3 className={`text-2xl font-bold ${planDetails.color}`}>Plano {planDetails.name}</h3>
+                             <p className="text-nexus-muted text-sm mt-1">Sua assinatura está ativa.</p>
+                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded border border-nexus-border bg-nexus-bg">
+                            <span className="text-xs text-nexus-muted uppercase font-bold block mb-1">Status</span>
+                            <span className="text-sm font-medium text-green-500 flex items-center gap-1"><Check size={12}/> Ativo</span>
+                        </div>
+                        <div className="p-3 rounded border border-nexus-border bg-nexus-bg">
+                            <span className="text-xs text-nexus-muted uppercase font-bold block mb-1">Renovação</span>
+                            <span className="text-sm font-medium text-nexus-text">Mensal</span>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 flex justify-end">
+                         <button 
+                            onClick={() => { onClose(); onOpenSubscription(); }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nexus-text text-nexus-bg hover:bg-nexus-text/90 text-sm font-bold rounded transition-colors"
+                        >
+                            <CreditCard size={16} /> Gerenciar / Alterar Plano
                         </button>
                     </div>
                 </div>

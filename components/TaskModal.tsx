@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Task, Status, Priority, Attachment, Tag, ChecklistItem, User } from '../types';
-import { X, Upload, FileText, Trash2, Save, Tag as TagIcon, Globe, Briefcase, Target, Calendar, CheckSquare, User as UserIcon, Edit2, Clock, Lock, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, Trash2, Save, Tag as TagIcon, Globe, Briefcase, Target, Calendar, CheckSquare, User as UserIcon, Edit2, Clock, Lock, AlertCircle, CalendarClock } from 'lucide-react';
 import { STATUS_COLUMNS, PRESET_SEGMENTS } from '../constants';
 import { ImageGalleryModal } from './ImageGalleryModal';
 
@@ -53,6 +54,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     attachments: [],
     checklist: [],
     dueDate: '',
+    scheduledAt: '',
     assignee: '',
     coverUrl: ''
   });
@@ -106,6 +108,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         attachments: [],
         checklist: [],
         dueDate: '',
+        scheduledAt: '',
         assignee: '',
         projectId: currentProjectId,
         coverUrl: ''
@@ -587,6 +590,28 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                           />
                       </div>
                   </div>
+
+                  {/* Scheduled For (Create At) */}
+                  <div className="space-y-1">
+                      <label className="text-[10px] text-nexus-muted flex items-center gap-1">
+                         <CalendarClock size={10} /> Agendar Criação
+                      </label>
+                      <div className="relative">
+                          <input 
+                            type="datetime-local"
+                            value={formData.scheduledAt || ''}
+                            onChange={(e) => setFormData({...formData, scheduledAt: e.target.value})}
+                            className="w-full bg-nexus-card border border-nexus-border rounded px-2 py-2 text-xs outline-none focus:border-nexus-cobalt text-nexus-text disabled:opacity-70" 
+                            disabled={isReadOnly}
+                            min={new Date().toISOString().slice(0, 16)}
+                          />
+                      </div>
+                      {formData.scheduledAt && (
+                          <div className="text-[9px] text-nexus-accent flex items-center gap-1 mt-1">
+                              <Clock size={8} /> Agendado para ativar no futuro
+                          </div>
+                      )}
+                  </div>
               </div>
 
               {/* Tags Section */}
@@ -748,9 +773,21 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               {!isReadOnly && (
                 <button 
                     onClick={() => onSave(formData as Task)}
-                    className="flex items-center gap-2 px-6 py-2 bg-nexus-cobalt hover:bg-blue-600 text-white text-xs font-bold rounded transition-all shadow-lg shadow-blue-900/20"
+                    className={`flex items-center gap-2 px-6 py-2 text-white text-xs font-bold rounded transition-all shadow-lg ${
+                        formData.scheduledAt 
+                        ? 'bg-nexus-accent text-black hover:bg-amber-400 shadow-amber-900/20' 
+                        : 'bg-nexus-cobalt hover:bg-blue-600 shadow-blue-900/20'
+                    }`}
                 >
-                    <Save size={14} /> Salvar Alterações
+                    {formData.scheduledAt ? (
+                        <>
+                            <CalendarClock size={14} /> Agendar
+                        </>
+                    ) : (
+                        <>
+                            <Save size={14} /> Salvar Alterações
+                        </>
+                    )}
                 </button>
               )}
           </div>

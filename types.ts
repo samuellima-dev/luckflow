@@ -66,6 +66,7 @@ export interface Task {
   assignee?: string; // Username of member
   createdAt: string;
   position?: number; // For manual ordering
+  scheduledAt?: string; // New field for future scheduling
 }
 
 export interface Metric {

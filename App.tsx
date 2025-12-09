@@ -12,7 +12,7 @@ import { SubscriptionModal } from './components/SubscriptionModal';
 import { ListView, TableView } from './components/ProjectViews';
 import { Task, Status, User, Project, Tag, ViewMode } from './types';
 import { STATUS_COLUMNS, PRESET_TAGS } from './constants';
-import { Plus, X, Loader2, CheckCircle2, WifiOff, EyeOff, Zap, MessageCircle } from 'lucide-react';
+import { Plus, X, Loader2, CheckCircle2, WifiOff, EyeOff, Zap, MessageCircle, Clock } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // --- MOCK DATA FOR OFFLINE MODE ---
@@ -61,7 +61,7 @@ const App: React.FC = () => {
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
 
   // Toast State
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'automation' | 'whatsapp' } | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'automation' | 'whatsapp' | 'schedule' } | null>(null);
 
   // Quick Add State
   const [quickAddColumn, setQuickAddColumn] = useState<Status | null>(null);
@@ -115,7 +115,7 @@ const App: React.FC = () => {
     }
   }, [toast]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'automation' | 'whatsapp' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'automation' | 'whatsapp' | 'schedule' = 'success') => {
     setToast({ visible: true, message, type });
   };
 
@@ -242,7 +242,8 @@ const App: React.FC = () => {
                         createdAt: t.created_at,
                         // Ensure distinct positions on load if missing or 0
                         position: t.position || (index + 1) * 1000,
-                        coverUrl: t.cover_url
+                        coverUrl: t.cover_url,
+                        scheduledAt: t.scheduled_at
                     }));
                     setTasks(mappedTasks);
                 }
@@ -370,6 +371,16 @@ const App: React.FC = () => {
       handleUpdateProfile({ plan });
       showToast(`Plano ${plan.toUpperCase()} ativado com sucesso!`, 'success');
       setIsSubscriptionModalOpen(false);
+  };
+
+  const handleCancelPlan = async () => {
+    // Simulate API/Payment cancellation
+    // setIsLoading(true); // You could enable a loading state if desired
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    handleUpdateProfile({ plan: 'free' });
+    showToast("Assinatura cancelada com sucesso. Você voltou ao plano Gratuito.", "success");
+    setIsSubscriptionModalOpen(false);
   };
 
   const handleManageTags = async (action: 'add' | 'edit' | 'delete', tag: Tag, oldText?: string) => {
@@ -577,6 +588,15 @@ const App: React.FC = () => {
         return;
     }
 
+    // Check for future schedule
+    if (taskData.scheduledAt) {
+        // Simple logic: if scheduledAt exists and is in future, we toast differently
+        const scheduledTime = new Date(taskData.scheduledAt);
+        if (scheduledTime > new Date()) {
+             showToast(`Tarefa agendada para ${scheduledTime.toLocaleString()}`, 'schedule');
+        }
+    }
+
     // Run Automations BEFORE saving
     const { task: processedTask, automationLog } = runAutomations(taskData);
     
@@ -621,7 +641,8 @@ const App: React.FC = () => {
         assignee: processedTask.assignee,
         created_at: processedTask.createdAt,
         position: processedTask.position,
-        cover_url: processedTask.coverUrl
+        cover_url: processedTask.coverUrl,
+        scheduled_at: processedTask.scheduledAt
     };
 
     // Attempt to save fully
@@ -647,7 +668,7 @@ const App: React.FC = () => {
                 showToast(`Erro ao salvar no servidor: ${retryError.message} (Apenas local)`, "error");
             } else {
                 showToast("Salvo! (Aviso: Colunas do DB pendentes)", "automation");
-                console.log("SQL NECESSÁRIO: ALTER TABLE tasks ADD COLUMN IF NOT EXISTS position float; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS cover_url text; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_name text; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS client_segment text; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS objective text; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS website_url text; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS checklist jsonb; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS attachments jsonb; ALTER TABLE tasks ADD COLUMN IF NOT EXISTS tags jsonb;");
+                console.log("SQL NECESSÁRIO: ALTER TABLE tasks ADD COLUMN IF NOT EXISTS scheduled_at text;");
             }
         } else {
             showToast(`Erro ao salvar: ${error.message}`, "error");
@@ -1092,6 +1113,7 @@ const App: React.FC = () => {
         onClose={() => setIsProfileModalOpen(false)}
         user={user}
         onUpdateProfile={handleUpdateProfile}
+        onOpenSubscription={() => setIsSubscriptionModalOpen(true)}
       />
 
       <SubscriptionModal
@@ -1099,6 +1121,7 @@ const App: React.FC = () => {
         onClose={() => setIsSubscriptionModalOpen(false)}
         currentUser={user}
         onUpgrade={handleUpgradePlan}
+        onCancelPlan={handleCancelPlan}
       />
 
       {toast?.visible && (
@@ -1108,13 +1131,16 @@ const App: React.FC = () => {
                 ? 'bg-nexus-accent/10 border-nexus-accent/20 text-nexus-accent'
                 : toast.type === 'whatsapp'
                     ? 'bg-green-500/10 border-green-500/20 text-green-500'
-                    : toast.type === 'success' 
-                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' 
-                        : 'bg-red-500/10 border-red-500/20 text-red-500'
+                    : toast.type === 'schedule'
+                        ? 'bg-purple-500/10 border-purple-500/20 text-purple-500'
+                        : toast.type === 'success' 
+                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' 
+                            : 'bg-red-500/10 border-red-500/20 text-red-500'
           } backdrop-blur-md`}>
             {toast.type === 'success' && <CheckCircle2 size={18} />}
             {toast.type === 'automation' && <Zap size={18} className="fill-current" />}
             {toast.type === 'whatsapp' && <MessageCircle size={18} />}
+            {toast.type === 'schedule' && <Clock size={18} />}
             {toast.type === 'error' && <X size={18} />}
             <span className="text-sm font-medium">{toast.message}</span>
           </div>

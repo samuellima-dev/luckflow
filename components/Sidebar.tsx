@@ -78,6 +78,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setDraggedProject(null);
   };
 
+  const isPremium = user.plan && user.plan !== 'free';
+
   const renderProjectItem = (item: Project, isShared: boolean) => (
     <div 
         key={item.id} 
@@ -147,14 +149,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
         </div>
 
-        {/* Upgrade Plan Button */}
+        {/* Upgrade Plan Button - Conditionally Rendered Text/Style */}
         <button 
             onClick={onOpenSubscription}
-            className="w-full relative overflow-hidden group rounded-lg p-0.5 bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500"
+            className={`w-full relative overflow-hidden group rounded-lg p-0.5 ${isPremium ? 'bg-nexus-border' : 'bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-500'}`}
         >
             <div className="relative bg-nexus-bg hover:bg-nexus-card text-nexus-text rounded-md px-3 py-2 flex items-center justify-center gap-2 transition-colors">
-                <Crown size={14} className="text-yellow-500" />
-                <span className="text-xs font-bold uppercase tracking-wider">Assinar Premium</span>
+                <Crown size={14} className={isPremium ? "text-nexus-muted" : "text-yellow-500"} />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                    {isPremium ? 'Assinatura' : 'Assinar Premium'}
+                </span>
             </div>
         </button>
 
@@ -236,7 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs font-medium text-nexus-text truncate">{String(user.username)}</span>
-            <span className="text-[9px] text-nexus-muted font-mono flex items-center gap-1 truncate">
+            <span className="text-sm font-medium text-nexus-muted font-mono flex items-center gap-1 truncate">
                 {ROLES_CONFIG[user.role].label} 
                 {user.plan && user.plan !== 'free' && ` • ${user.plan.toUpperCase()}`}
             </span>
