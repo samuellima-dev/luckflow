@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Task, Project } from '../types';
-import { BarChart3, PieChart, TrendingUp, CheckCircle, AlertCircle, Clock, Filter, LayoutGrid, BrainCircuit, Tag, ArrowRight } from 'lucide-react';
+import { BarChart3, PieChart, TrendingUp, CheckCircle, AlertCircle, Clock, Filter, LayoutGrid, BrainCircuit, Tag, ArrowRight, Activity, Zap, Target } from 'lucide-react';
 import { STATUS_COLUMNS } from '../constants';
 
 interface MonitoringDashboardProps {
@@ -21,8 +21,6 @@ interface PatternGroup {
 export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks, projects, initialProjectId }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
 
-  // Update local state if initialProjectId changes (e.g. sidebar click), 
-  // but allow 'all' if no project is selected
   useEffect(() => {
     if (initialProjectId) {
         setSelectedProjectId(initialProjectId);
@@ -31,13 +29,11 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
     }
   }, [initialProjectId]);
 
-  // Filter tasks based on selection
   const filteredTasks = useMemo(() => {
       if (selectedProjectId === 'all') return tasks;
       return tasks.filter(t => t.projectId === selectedProjectId);
   }, [tasks, selectedProjectId]);
 
-  // Get current project object for display details
   const currentProject = projects.find(p => p.id === selectedProjectId);
 
   const stats = useMemo(() => {
@@ -45,6 +41,7 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
     const done = filteredTasks.filter(t => t.status === 'done').length;
     const inProgress = filteredTasks.filter(t => t.status === 'inprogress').length;
     const backlog = filteredTasks.filter(t => t.status === 'backlog').length;
+    const review = filteredTasks.filter(t => t.status === 'review').length;
     
     const completionRate = total === 0 ? 0 : Math.round((done / total) * 100);
     
@@ -53,22 +50,24 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
     const medium = filteredTasks.filter(t => t.priority === 'Medium').length;
     const low = filteredTasks.filter(t => t.priority === 'Low').length;
 
-    return { total, done, inProgress, backlog, completionRate, high, medium, low };
+    // Health Score Algorithm
+    // Based on High Priority Pendings vs Completion
+    const highPriorityPending = filteredTasks.filter(t => t.priority === 'High' && t.status !== 'done').length;
+    const healthScore = Math.max(0, Math.min(100, (completionRate * 1.2) - (highPriorityPending * 5)));
+
+    return { total, done, inProgress, backlog, review, completionRate, high, medium, low, healthScore };
   }, [filteredTasks]);
 
-  // Calculations for bar charts
   const statusCounts = STATUS_COLUMNS.map(col => ({
     label: col.label,
     count: filteredTasks.filter(t => t.status === col.id).length,
     percent: filteredTasks.length ? (filteredTasks.filter(t => t.status === col.id).length / filteredTasks.length) * 100 : 0
   }));
 
-  // --- INTELLIGENT PATTERN RECOGNITION ---
   const patternGroups = useMemo(() => {
     const groups: PatternGroup[] = [];
     const activeTasks = filteredTasks.filter(t => t.status !== 'done');
 
-    // 1. High Priority Concentration (If > 2 items)
     const highPri = activeTasks.filter(t => t.priority === 'High');
     if (highPri.length >= 2) {
         groups.push({
@@ -81,7 +80,6 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
         });
     }
 
-    // 2. Tag Clusters (If > 2 items with same tag)
     const tagMap = new Map<string, Task[]>();
     activeTasks.forEach(t => {
         t.tags.forEach(tag => {
@@ -91,7 +89,7 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
     });
 
     tagMap.forEach((grpTasks, tag) => {
-        if (grpTasks.length >= 3) { // Threshold to avoid noise
+        if (grpTasks.length >= 3) {
              groups.push({
                 id: `cluster-${tag}`,
                 label: `Cluster: ${tag}`,
@@ -103,7 +101,6 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
         }
     });
 
-    // 3. Stagnation Risk (InProgress but low progress)
     const stalled = activeTasks.filter(t => t.status === 'inprogress' && t.progress < 25);
     if (stalled.length >= 2) {
          groups.push({
@@ -129,124 +126,122 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
   }
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto bg-nexus-bg">
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-            <h2 className="text-2xl font-bold text-nexus-text tracking-tight mb-2 flex items-center gap-2">
+    <div className="flex-1 p-8 overflow-y-auto bg-nexus-bg space-y-8">
+      {/* Header Analytical Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-nexus-border pb-6">
+        <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-nexus-cobalt uppercase tracking-[0.2em]">
+                <Activity size={12} /> Engenharia de Dados & Métricas
+            </div>
+            <h2 className="text-3xl font-bold text-nexus-text tracking-tight flex items-center gap-3">
                 Monitoramento: 
-                <span className="text-nexus-cobalt">
-                    {selectedProjectId === 'all' ? 'Visão Geral (Todos)' : currentProject?.name}
+                <span className="text-nexus-muted font-normal">
+                    {selectedProjectId === 'all' ? 'Relatório Consolidado' : currentProject?.name}
                 </span>
             </h2>
-            <p className="text-nexus-muted">
-                {selectedProjectId === 'all' 
-                    ? `Analisando métricas consolidadas de ${projects.length} projetos.` 
-                    : 'Análise em tempo real de métricas e evolução do projeto.'}
-            </p>
         </div>
 
-        {/* Project Filter Dropdown */}
-        <div className="flex items-center gap-2 bg-nexus-card border border-nexus-border rounded-lg px-3 py-2 shadow-sm min-w-[250px]">
-            <Filter size={16} className="text-nexus-muted" />
+        <div className="flex items-center gap-3 bg-nexus-card border border-nexus-border rounded-md px-3 py-2 shadow-sm min-w-[280px]">
+            <Filter size={14} className="text-nexus-muted" />
             <div className="flex-1">
-                <label className="block text-[9px] uppercase font-bold text-nexus-muted leading-none mb-0.5">Filtrar por Projeto</label>
                 <select 
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full bg-transparent text-sm font-medium text-nexus-text outline-none cursor-pointer"
+                    className="w-full bg-transparent text-xs font-bold text-nexus-text outline-none cursor-pointer uppercase tracking-wider"
                 >
-                    <option value="all">Todos os Projetos</option>
-                    <option disabled className="text-xs bg-nexus-bg text-nexus-muted">──────────</option>
+                    <option value="all">TODOS OS PROJETOS</option>
                     {projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
                     ))}
                 </select>
             </div>
-            <LayoutGrid size={16} className="text-nexus-muted opacity-50" />
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg relative overflow-hidden group">
-            <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <CheckCircle size={64} className="text-nexus-cobalt" />
+      {/* Primary Analytical Widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Project Health Score */}
+        <div className="md:col-span-2 bg-nexus-card border border-nexus-border p-6 rounded-lg flex items-center justify-between group hover:border-nexus-cobalt transition-colors">
+            <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-2">
+                    <Target size={18} className="text-nexus-cobalt" />
+                    <h3 className="text-xs font-bold text-nexus-muted uppercase tracking-widest">Health Score</h3>
+                </div>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-mono font-bold text-nexus-text tracking-tighter">{Math.round(stats.healthScore)}</span>
+                    <span className="text-sm text-nexus-muted font-mono">/100</span>
+                </div>
+                <p className="text-[10px] text-nexus-muted leading-relaxed max-w-[200px]">
+                    Índice calculado com base na vazão de tarefas vs. tickets de alta prioridade.
+                </p>
             </div>
-            <p className="text-sm font-medium text-nexus-muted uppercase tracking-wider mb-2">Conclusão</p>
-            <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-nexus-cobalt">{stats.completionRate}%</span>
-                <span className="text-xs text-nexus-muted mb-1.5">do escopo total</span>
-            </div>
-            <div className="w-full bg-nexus-bg h-1.5 mt-4 rounded-full overflow-hidden">
-                <div className="bg-nexus-cobalt h-full" style={{ width: `${stats.completionRate}%` }}></div>
-            </div>
-        </div>
-
-        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg relative overflow-hidden group">
-            <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <TrendingUp size={64} className="text-nexus-accent" />
-            </div>
-            <p className="text-sm font-medium text-nexus-muted uppercase tracking-wider mb-2">Em Andamento</p>
-            <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-nexus-accent">{stats.inProgress}</span>
-                <span className="text-xs text-nexus-muted mb-1.5">tarefas ativas</span>
-            </div>
-        </div>
-
-        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg relative overflow-hidden group">
-             <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Clock size={64} className="text-white" />
-            </div>
-            <p className="text-sm font-medium text-nexus-muted uppercase tracking-wider mb-2">Backlog</p>
-            <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-nexus-text">{stats.backlog}</span>
-                <span className="text-xs text-nexus-muted mb-1.5">aguardando início</span>
+            <div className="relative w-24 h-24">
+                <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-nexus-border" />
+                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                        strokeDasharray={251.2}
+                        strokeDashoffset={251.2 - (251.2 * stats.healthScore) / 100}
+                        className="text-nexus-cobalt transition-all duration-1000"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Activity size={24} className="text-nexus-cobalt animate-pulse" />
+                </div>
             </div>
         </div>
 
-        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg relative overflow-hidden group">
-            <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <AlertCircle size={64} className="text-red-500" />
+        {/* Rapid Metrics */}
+        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg space-y-4">
+            <div className="flex items-center gap-2">
+                <Zap size={16} className="text-nexus-accent" />
+                <h3 className="text-xs font-bold text-nexus-muted uppercase tracking-widest">Conclusão</h3>
             </div>
-            <p className="text-sm font-medium text-nexus-muted uppercase tracking-wider mb-2">Alta Prioridade</p>
-            <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-red-500">{stats.high}</span>
-                <span className="text-xs text-nexus-muted mb-1.5">itens críticos</span>
+            <div className="text-3xl font-mono font-bold text-nexus-text">{stats.completionRate}%</div>
+            <div className="w-full bg-nexus-bg h-1 rounded-full overflow-hidden">
+                <div className="bg-nexus-accent h-full" style={{ width: `${stats.completionRate}%` }}></div>
             </div>
+            <p className="text-[9px] text-nexus-muted font-mono uppercase">Evolução do cronograma</p>
+        </div>
+
+        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg space-y-4">
+            <div className="flex items-center gap-2 text-red-500">
+                <AlertCircle size={16} />
+                <h3 className="text-xs font-bold uppercase tracking-widest opacity-80">Critical Path</h3>
+            </div>
+            <div className="text-3xl font-mono font-bold text-nexus-text">{stats.high}</div>
+            <div className="flex gap-1">
+                {Array.from({length: 5}).map((_, i) => (
+                    <div key={i} className={`h-1 flex-1 rounded-full ${i < stats.high ? 'bg-red-500' : 'bg-nexus-border'}`}></div>
+                ))}
+            </div>
+            <p className="text-[9px] text-nexus-muted font-mono uppercase">Itens de alta prioridade</p>
         </div>
       </div>
 
-      {/* Smart Patterns Section */}
+      {/* Smart Insights Grid */}
       {patternGroups.length > 0 && (
-          <div className="mb-8 animate-in slide-in-from-bottom-5 duration-500">
-             <h3 className="text-lg font-bold text-nexus-text mb-4 flex items-center gap-2">
-                <BrainCircuit size={20} className="text-nexus-cobalt" />
-                Insights e Padrões Inteligentes
+          <div className="space-y-4">
+             <h3 className="text-xs font-bold text-nexus-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                <BrainCircuit size={14} className="text-nexus-cobalt" />
+                Deteção de Padrões por IA
              </h3>
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                  {patternGroups.map(group => (
-                     <div key={group.id} className={`p-4 rounded-lg border ${group.colorClass} backdrop-blur-sm transition-all hover:scale-[1.01]`}>
-                         <div className="flex items-start justify-between mb-3">
+                     <div key={group.id} className={`p-5 rounded-lg border ${group.colorClass} space-y-3 transition-all hover:bg-opacity-10`}>
+                         <div className="flex items-center justify-between">
                              <div className="flex items-center gap-2">
-                                 <group.icon size={18} className="opacity-80" />
-                                 <h4 className="font-bold text-sm">{group.label}</h4>
+                                 <group.icon size={16} />
+                                 <h4 className="font-bold text-xs uppercase tracking-wider">{group.label}</h4>
                              </div>
-                             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 border border-white/10">
-                                 {group.tasks.length}
-                             </span>
+                             <span className="text-[10px] font-mono bg-white/10 px-1.5 py-0.5 rounded">{group.tasks.length}</span>
                          </div>
-                         <p className="text-xs opacity-80 mb-3 leading-relaxed">{group.reason}</p>
-                         <div className="space-y-1">
-                             {group.tasks.slice(0, 3).map(t => (
-                                 <div key={t.id} className="text-[10px] truncate flex items-center gap-1.5 opacity-70">
+                         <p className="text-xs opacity-70 leading-relaxed font-medium">{group.reason}</p>
+                         <div className="pt-2 border-t border-current border-opacity-10">
+                             {group.tasks.slice(0, 2).map(t => (
+                                 <div key={t.id} className="text-[9px] truncate opacity-60 flex items-center gap-1 mt-1">
                                      <ArrowRight size={8} /> {t.title}
                                  </div>
                              ))}
-                             {group.tasks.length > 3 && (
-                                 <div className="text-[9px] pl-3.5 opacity-50 italic">
-                                     + {group.tasks.length - 3} outros itens...
-                                 </div>
-                             )}
                          </div>
                      </div>
                  ))}
@@ -254,24 +249,26 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
           </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Status Distribution Chart */}
-        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg">
-            <h3 className="text-lg font-bold text-nexus-text mb-6 flex items-center gap-2">
-                <BarChart3 size={20} className="text-nexus-cobalt" />
-                Distribuição por Status
-            </h3>
-            <div className="space-y-4">
+      {/* Distribution Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-nexus-card border border-nexus-border p-8 rounded-lg">
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xs font-bold text-nexus-muted uppercase tracking-[0.2em] flex items-center gap-2">
+                    <BarChart3 size={16} /> Status Flow Analysis
+                </h3>
+                <div className="text-[10px] font-mono text-nexus-muted">TOTAL DE ITENS: {stats.total}</div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                 {statusCounts.map((item, idx) => (
-                    <div key={idx}>
-                        <div className="flex justify-between text-sm mb-1">
-                            <span className="text-nexus-text">{item.label}</span>
-                            <span className="text-nexus-muted font-mono">{item.count} ({Math.round(item.percent)}%)</span>
+                    <div key={idx} className="space-y-2">
+                        <div className="flex justify-between items-end">
+                            <span className="text-[10px] font-bold text-nexus-text uppercase tracking-widest">{item.label}</span>
+                            <span className="text-xs font-mono text-nexus-cobalt font-bold">{item.count}</span>
                         </div>
-                        <div className="w-full bg-nexus-bg h-3 rounded-full overflow-hidden">
+                        <div className="w-full bg-nexus-bg h-2 rounded-full overflow-hidden border border-nexus-border/50">
                             <div 
                                 className="h-full bg-nexus-cobalt transition-all duration-1000" 
-                                style={{ width: `${item.percent}%`, opacity: 0.5 + (idx * 0.1) }} // gradient effect
+                                style={{ width: `${item.percent}%`, opacity: 0.3 + (idx * 0.15) }}
                             ></div>
                         </div>
                     </div>
@@ -279,34 +276,40 @@ export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({ tasks,
             </div>
         </div>
 
-        {/* Priority Radar/Pie Simulation */}
-        <div className="bg-nexus-card border border-nexus-border p-6 rounded-lg flex flex-col">
-             <h3 className="text-lg font-bold text-nexus-text mb-6 flex items-center gap-2">
-                <PieChart size={20} className="text-nexus-accent" />
-                Carga de Trabalho (Prioridade)
+        <div className="bg-nexus-card border border-nexus-border p-8 rounded-lg flex flex-col">
+             <h3 className="text-xs font-bold text-nexus-muted uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+                <PieChart size={16} /> Workload Balance
             </h3>
             
-            <div className="flex-1 flex items-center justify-center gap-8">
-                {/* Visual Representation using generic CSS bars as simple visualizer */}
-                <div className="flex items-end gap-6 h-40">
-                    <div className="flex flex-col items-center gap-2">
-                         <div className="w-12 bg-neutral-700/50 rounded-t-lg relative group transition-all hover:bg-neutral-600" style={{ height: `${(stats.low / (stats.total || 1)) * 100}%`, minHeight: '4px' }}>
-                             <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-black text-white text-xs px-2 py-1 rounded">{stats.low}</div>
-                         </div>
-                         <span className="text-xs text-nexus-muted font-medium">Baixa</span>
+            <div className="flex-1 flex flex-col justify-center space-y-6">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            <span className="text-xs font-medium text-nexus-muted">Alta Prioridade</span>
+                        </div>
+                        <span className="text-sm font-mono font-bold text-nexus-text">{stats.high}</span>
                     </div>
-                    <div className="flex flex-col items-center gap-2">
-                         <div className="w-12 bg-nexus-cobalt rounded-t-lg relative group transition-all hover:bg-blue-500" style={{ height: `${(stats.medium / (stats.total || 1)) * 100}%`, minHeight: '4px' }}>
-                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-black text-white text-xs px-2 py-1 rounded">{stats.medium}</div>
-                         </div>
-                         <span className="text-xs text-nexus-muted font-medium">Média</span>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-nexus-cobalt"></div>
+                            <span className="text-xs font-medium text-nexus-muted">Média Prioridade</span>
+                        </div>
+                        <span className="text-sm font-mono font-bold text-nexus-text">{stats.medium}</span>
                     </div>
-                    <div className="flex flex-col items-center gap-2">
-                         <div className="w-12 bg-nexus-accent rounded-t-lg relative group transition-all hover:bg-amber-400" style={{ height: `${(stats.high / (stats.total || 1)) * 100}%`, minHeight: '4px' }}>
-                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-black text-white text-xs px-2 py-1 rounded">{stats.high}</div>
-                         </div>
-                         <span className="text-xs text-nexus-muted font-medium">Alta</span>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-neutral-600"></div>
+                            <span className="text-xs font-medium text-nexus-muted">Baixa Prioridade</span>
+                        </div>
+                        <span className="text-sm font-mono font-bold text-nexus-text">{stats.low}</span>
                     </div>
+                </div>
+
+                <div className="h-2 flex rounded-full overflow-hidden">
+                    <div className="bg-red-500 h-full" style={{ width: `${(stats.high / (stats.total || 1)) * 100}%` }}></div>
+                    <div className="bg-nexus-cobalt h-full" style={{ width: `${(stats.medium / (stats.total || 1)) * 100}%` }}></div>
+                    <div className="bg-neutral-600 h-full" style={{ width: `${(stats.low / (stats.total || 1)) * 100}%` }}></div>
                 </div>
             </div>
         </div>
