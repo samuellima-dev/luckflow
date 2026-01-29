@@ -173,7 +173,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
 
                     <div className="w-full space-y-3">
                         <a 
-                            href="https://wa.me/5581999944682?text=Ol%C3%A1%2C%20gostaria%20de%20confirmar%20o%20pagamento%20da%20minha%20assinatura%20LuckFlow%20Premium!"
+                            href="https://wa.me/5581999644682?text=Ol%C3%A1%2C%20gostaria%20de%20confirmar%20o%20pagamento%20da%20minha%20assinatura%20LuckFlow%20Premium!"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-900/20"
@@ -183,7 +183,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
                         </a>
                         
                         <p className="text-[10px] text-nexus-muted">
-                            Após o pagamento, clique no botão acima para agilizar a liberação enviando o comprovante para nosso suporte (81) 99994-4682.
+                            Após o pagamento, clique no botão acima para agilizar a liberação enviando o comprovante para nosso suporte (81) 99964-4682.
                         </p>
                     </div>
 
