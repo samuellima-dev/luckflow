@@ -385,33 +385,44 @@ const App: React.FC = () => {
 
   const handleReorderProjects = (reorderedProjects: Project[]) => setProjects(reorderedProjects);
 
-  const runAutomations = (task: Task): { task: Task, automationLog: string | null } => {
-      let updatedTask = { ...task };
-      let appliedRule = null;
-      const p = updatedTask.progress;
-      let targetStatus: Status | null = null;
-
-      if (p === 0 && updatedTask.status !== 'backlog' && updatedTask.status !== 'todo') targetStatus = 'todo';
-      else if (p > 0 && p <= 60 && updatedTask.status !== 'inprogress') targetStatus = 'inprogress';
-      else if (p > 60 && p < 100 && updatedTask.status !== 'review') targetStatus = 'review';
-      else if (p === 100 && updatedTask.status !== 'done') targetStatus = 'done';
-
-      if (targetStatus) {
-          updatedTask.status = targetStatus;
-          appliedRule = `Status atualizado via progresso: ${targetStatus}`;
-      }
-      return { task: updatedTask, automationLog: appliedRule };
-  };
-
+  // --- REFACTORED STATUS LOGIC ---
   const handleSaveTask = async (taskData: Task) => {
     if (!user || user.role === 'viewer') return;
-    const { task: processedTask, automationLog } = runAutomations(taskData);
     
+    let processedTask = { ...taskData };
+    
+    // Logic to sync Status <-> Progress
+    const originalTask = selectedTask || { status: 'backlog', progress: 0 } as Task; 
+    
+    const statusChanged = processedTask.status !== originalTask.status;
+    const progressChanged = processedTask.progress !== originalTask.progress;
+    
+    // 1. If Status Changed explicitly, update progress to match defaults
+    if (statusChanged) {
+        if (processedTask.status === 'done') {
+            processedTask.progress = 100;
+        } else if (processedTask.status === 'review') {
+            if (processedTask.progress < 60) processedTask.progress = 75;
+            else if (processedTask.progress === 100) processedTask.progress = 90;
+        } else if (processedTask.status === 'inprogress') {
+             if (processedTask.progress === 0) processedTask.progress = 25;
+             else if (processedTask.progress === 100) processedTask.progress = 90;
+        } else if (processedTask.status === 'todo' || processedTask.status === 'backlog') {
+             processedTask.progress = 0;
+        }
+    } 
+    // 2. If Progress changed manually, update status
+    else if (progressChanged) {
+        if (processedTask.progress === 100) processedTask.status = 'done';
+        else if (processedTask.progress > 60) processedTask.status = 'review';
+        else if (processedTask.progress > 0) processedTask.status = 'inprogress';
+        else processedTask.status = 'todo';
+    }
+
     if (selectedTask) setTasks(tasks.map(t => t.id === processedTask.id ? processedTask : t));
     else setTasks([...tasks, processedTask]);
     
     setIsTaskModalOpen(false);
-    if (automationLog) showToast(automationLog, 'automation');
 
     if (isOfflineMode) return;
     const dbTask = {
@@ -425,17 +436,26 @@ const App: React.FC = () => {
 
   const handleQuickAdd = async () => {
       if (!quickAddTitle.trim() || !currentProjectId || !quickAddColumn || user?.role === 'viewer') return;
+      
+      // Smart default progress based on column
+      let initialProgress = 0;
+      if (quickAddColumn === 'done') initialProgress = 100;
+      else if (quickAddColumn === 'review') initialProgress = 75;
+      else if (quickAddColumn === 'inprogress') initialProgress = 25;
+
       const newTask: Task = {
         id: crypto.randomUUID(), title: quickAddTitle, description: '', status: quickAddColumn,
-        priority: 'Medium', progress: 0, tags: [], attachments: [], checklist: [],
+        priority: 'Medium', progress: initialProgress, tags: [], attachments: [], checklist: [],
         projectId: currentProjectId, createdAt: new Date().toISOString(), position: Date.now()
       };
+      
       setTasks([...tasks, newTask]);
       setQuickAddTitle(''); setQuickAddColumn(null);
       if (isOfflineMode) return;
       await supabase.from('tasks').insert({
           id: newTask.id, project_id: newTask.projectId, title: newTask.title,
-          status: newTask.status, priority: newTask.priority
+          status: newTask.status, priority: newTask.priority, progress: newTask.progress, 
+          position: newTask.position
       });
   };
 
@@ -455,10 +475,20 @@ const App: React.FC = () => {
       const draggedTask = tasks.find(t => t.id === draggedTaskId);
       if (!draggedTask) return;
       
-      const { task: automatedTask, automationLog } = runAutomations({ ...draggedTask, status: targetStatus });
-      const finalStatus = automatedTask.status;
+      let updatedTask = { ...draggedTask, status: targetStatus };
+
+      // Sync Progress automatically when dropping to new column
+      if (draggedTask.status !== targetStatus) {
+          if (targetStatus === 'done') updatedTask.progress = 100;
+          else if (targetStatus === 'review') updatedTask.progress = 75;
+          else if (targetStatus === 'inprogress' && updatedTask.progress === 0) updatedTask.progress = 25;
+          else if (targetStatus === 'todo' || targetStatus === 'backlog') updatedTask.progress = 0;
+          
+          if (targetStatus !== 'done' && updatedTask.progress === 100) updatedTask.progress = 90;
+      }
+      
       const otherTasks = tasks.filter(t => t.id !== draggedTaskId);
-      const targetColTasks = otherTasks.filter(t => t.status === finalStatus && t.projectId === currentProjectId).sort((a,b) => (a.position || 0) - (b.position || 0));
+      const targetColTasks = otherTasks.filter(t => t.status === targetStatus && t.projectId === currentProjectId).sort((a,b) => (a.position || 0) - (b.position || 0));
       
       let newPos = Date.now();
       if (targetId) {
@@ -475,9 +505,15 @@ const App: React.FC = () => {
           }
       }
       
-      setTasks([...otherTasks, { ...automatedTask, position: newPos }]);
-      if (automationLog) showToast(automationLog, 'automation');
-      if (!isOfflineMode) await supabase.from('tasks').update({ status: finalStatus, position: newPos }).eq('id', draggedTaskId);
+      setTasks([...otherTasks, { ...updatedTask, position: newPos }]);
+      
+      if (!isOfflineMode) {
+          await supabase.from('tasks').update({ 
+              status: updatedTask.status, 
+              progress: updatedTask.progress, 
+              position: newPos 
+          }).eq('id', draggedTaskId);
+      }
   };
 
   const toggleTheme = () => {
