@@ -29,9 +29,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
       bgGradient: 'from-yellow-400/20 to-transparent',
       features: [
           'Projetos Ilimitados',
-          'IA Generativa (Samuel_IA)',
           'Automações Avançadas',
-          'Relatórios em PDF',
+          'Relatórios em PDF (fase beta)',
           'Gestão de Equipes Completa',
           'Suporte Exclusivo via WhatsApp'
       ]
