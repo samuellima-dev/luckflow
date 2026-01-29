@@ -311,7 +311,7 @@ const App: React.FC = () => {
       }
   };
 
-  const handleUpgradePlan = async (plan: 'silver' | 'bronze' | 'gold') => {
+  const handleUpgradePlan = async (plan: 'premium') => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       handleUpdateProfile({ plan });
       showToast(`Plano ${plan.toUpperCase()} ativado!`, 'success');

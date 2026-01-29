@@ -117,9 +117,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, use
 
   const getPlanDetails = () => {
       switch(user.plan) {
-          case 'gold': return { name: 'Ouro', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/30' };
-          case 'bronze': return { name: 'Bronze', icon: Zap, color: 'text-amber-700', bg: 'bg-amber-700/10 border-amber-700/30' };
-          case 'silver': return { name: 'Prata', icon: Shield, color: 'text-gray-400', bg: 'bg-gray-400/10 border-gray-400/30' };
+          case 'premium': return { name: 'Premium', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/30' };
           default: return { name: 'Gratuito', icon: Star, color: 'text-nexus-muted', bg: 'bg-nexus-bg border-nexus-border' };
       }
   };
