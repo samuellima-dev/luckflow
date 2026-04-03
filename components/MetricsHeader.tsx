@@ -86,6 +86,13 @@ export const MetricsHeader: React.FC<MetricsHeaderProps> = ({
                 >
                     <Table2 size={14} />
                 </button>
+                <button 
+                    onClick={() => onViewChange('funnel')}
+                    className={`p-1.5 rounded transition-all ${currentView === 'funnel' ? 'bg-nexus-cobalt text-white shadow-sm' : 'text-nexus-muted hover:text-nexus-text'}`}
+                    title="Modo Funil de Vendas"
+                >
+                    <TrendingUp size={14} />
+                </button>
             </div>
 
             <div className="h-4 w-px bg-nexus-border"></div>

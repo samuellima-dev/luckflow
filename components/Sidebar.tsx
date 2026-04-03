@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Folder, Plus, Activity, Sun, Moon, LogOut, Share2, GripVertical, User as UserIcon, Users, Settings, Crown } from 'lucide-react';
+import { Sparkles, Folder, Plus, Activity, Sun, Moon, LogOut, Share2, GripVertical, User as UserIcon, Users, Settings, Crown, TrendingUp } from 'lucide-react';
 import { Project, User, ViewMode } from '../types';
 import { ROLES_CONFIG } from '../constants';
 
@@ -202,6 +202,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
             <Activity size={18} />
             <span>Monitoramento</span>
+            </button>
+
+            <button 
+                onClick={() => setView('funnel')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                    currentView === 'funnel' 
+                    ? 'bg-nexus-card text-nexus-accent border-l-2 border-nexus-accent' 
+                    : 'text-nexus-muted hover:text-nexus-text hover:bg-nexus-hover'
+                }`}
+            >
+            <TrendingUp size={18} />
+            <span>Funil de Vendas</span>
             </button>
         </div>
       </div>

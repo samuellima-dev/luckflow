@@ -7,13 +7,16 @@ import { TaskModal } from './components/TaskModal';
 import { AuthScreen } from './components/AuthScreen';
 import { ProjectModal } from './components/ProjectModal';
 import { MonitoringDashboard } from './components/MonitoringDashboard';
+import { SalesFunnel } from './components/SalesFunnel';
 import { ProfileModal } from './components/ProfileModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { ListView, TableView } from './components/ProjectViews';
 import { Task, Status, User, Project, Tag, ViewMode } from './types';
+import { Pipeline } from './types/agendor';
 import { STATUS_COLUMNS, PRESET_TAGS } from './constants';
 import { Plus, X, Loader2, CheckCircle2, WifiOff, EyeOff, Zap, MessageCircle, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { pipelineService } from './services/agendorService';
 
 // --- MOCK DATA FOR OFFLINE MODE ---
 const MOCK_PROJECTS: Project[] = [
@@ -35,7 +38,9 @@ const App: React.FC = () => {
   // Data State
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentPipelineId, setCurrentPipelineId] = useState<string | null>(null);
   const [systemTags, setSystemTags] = useState<Tag[]>([]);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   
@@ -232,6 +237,22 @@ const App: React.FC = () => {
                         scheduledAt: t.scheduled_at
                     }));
                     setTasks(mappedTasks);
+                }
+
+                // E. Fetch Pipelines
+                try {
+                    const { data: pipelinesData, error: pipelinesError } = await supabase
+                        .from('pipelines')
+                        .select('*');
+                    
+                    if (!pipelinesError && pipelinesData) {
+                        setPipelines(pipelinesData);
+                        if (pipelinesData.length > 0 && !currentPipelineId) {
+                            setCurrentPipelineId(pipelinesData[0].id);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Pipelines fetch failed (table may not exist yet)");
                 }
             } else {
                 setTasks([]);
@@ -564,6 +585,21 @@ const App: React.FC = () => {
         <main className="flex-1 overflow-x-auto overflow-y-hidden flex flex-col">
            {currentView === 'monitoring' ? (
              <MonitoringDashboard tasks={tasks} projects={projects} initialProjectId={currentProjectId} />
+           ) : currentView === 'funnel' ? (
+             currentPipelineId ? (
+               <SalesFunnel pipelineId={currentPipelineId} userId={user.id} />
+             ) : (
+               <div className="flex flex-col items-center justify-center h-[60vh] space-y-4 text-nexus-muted">
+                 <AlertTriangle className="w-12 h-12 opacity-20" />
+                 <p className="font-medium">Nenhum funil de vendas configurado.</p>
+                 <button 
+                   onClick={() => setIsProjectModalOpen(true)}
+                   className="px-4 py-2 bg-nexus-accent text-black rounded-lg font-bold text-sm"
+                 >
+                   Configurar Primeiro Funil
+                 </button>
+               </div>
+             )
            ) : currentView === 'list' ? (
               <div className="flex-1 overflow-y-auto">
                  <ListView tasks={filteredTasks} onEdit={(t) => { setSelectedTask(t); setIsTaskModalOpen(true); }} onDelete={handleDeleteTask} />

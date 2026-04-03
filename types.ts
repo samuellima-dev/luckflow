@@ -21,7 +21,7 @@ export type Priority = 'Low' | 'Medium' | 'High';
 
 export type Status = 'backlog' | 'todo' | 'inprogress' | 'review' | 'done';
 
-export type ViewMode = 'board' | 'list' | 'table' | 'gantt' | 'monitoring';
+export type ViewMode = 'board' | 'list' | 'table' | 'gantt' | 'monitoring' | 'funnel';
 
 export interface Attachment {
   id: string;

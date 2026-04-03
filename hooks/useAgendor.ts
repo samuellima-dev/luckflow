@@ -1,8 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
-import { dealService } from '../services/agendorService';
+import { dealService, pipelineService } from '../services/agendorService';
 import { contactService } from '../services/agendorService';
 import { activityService } from '../services/agendorService';
-import { Deal, Contact, Activity } from '../types/agendor';
+import { Deal, Contact, Activity, Pipeline } from '../types/agendor';
+
+export const usePipeline = (pipelineId: string) => {
+  const [pipeline, setPipeline] = useState<Pipeline | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadPipeline = async () => {
+      try {
+        setLoading(true);
+        const data = await pipelineService.getPipelineById(pipelineId);
+        setPipeline(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erro ao carregar pipeline');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (pipelineId) loadPipeline();
+  }, [pipelineId]);
+
+  return { pipeline, loading, error };
+};
 
 export const useDeals = (pipelineId: string) => {
   const [deals, setDeals] = useState<Deal[]>([]);

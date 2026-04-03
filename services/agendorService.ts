@@ -321,6 +321,16 @@ export const pipelineService = {
     return data;
   },
 
+  async getPipelineById(id: string) {
+    const { data, error } = await supabase
+      .from('pipelines')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async updatePipeline(id: string, updates: Partial<Pipeline>) {
     const { data, error } = await supabase
       .from('pipelines')
